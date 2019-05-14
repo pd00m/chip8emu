@@ -1,0 +1,8 @@
+#Ignore .vscode folder
+.vscode/**
+roms/**
+CMakeFiles/**
+cmake_install.cmake
+Makefile
+CMakeCache.txt
+chip8emu

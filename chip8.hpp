@@ -1,3 +1,5 @@
+#ifndef _MY_CHIP8_H_
+#define _MY_CHIP8_H_
 #include <iostream>
 
 class Chip8{
@@ -39,10 +41,15 @@ class Chip8{
         // Opcode
         // Consists of 2*8 bit values from program memory
         static unsigned char _opcode;
+
+        // Fontset
+        unsigned char fontset[80];
         
         // Function pointer lookup tables
         static void(*_basicInstruction[16])(void);      
         static void(*_8XXN_Instruction[16])(void);
+
+        static void parseInstruction(unsigned short instruction);
    
        // CPU function opcodes
        // For reference see: https://en.wikipedia.org/wiki/CHIP-8#Opcode_table
@@ -54,7 +61,8 @@ class Chip8{
 
         static void _cpu_NOP(void);     // NOP
         static void _cpu_0NNN(void);    // 0NNN 	Call 		                    Calls RCA 1802 program at address NNN. Not necessary for most ROMs.
-        static void _cpu_00E0(void);    // 00E0 	Display     disp_clear()        lears the screen.    
+        static void _cpu_00E0(void);    // 00E0 	Display     disp_clear()        lears the screen.  
+        static void _cpu_00EE(void);    // 00EE 	Flow        Return from a subroutine. The interpreter sets the program counter to the address at the top of the stack, then subtracts 1 from the stack pointer.      
         static void _cpu_1NNN(void);    // 1NNN 	Flow 	    goto NNN; 	        Jumps to address NNN.     
         static void _cpu_2XNN(void);    // 2NNN 	Flow 	    *(0xNNN)() 	        Calls subroutine at NNN.     
         static void _cpu_3XNN(void);    // 3XNN 	Cond 	    if(Vx==NN) 	        Skips the next instruction if VX equals NN. (Usually the next instruction is a jump to skip a code block)                      
@@ -87,15 +95,15 @@ class Chip8{
         static void _cpu_FX33(void);    // FX33 	BCD 	    set_BCD(Vx);
         static void _cpu_FX55(void);    // FX55 	MEM 	    reg_dump(Vx,&I) 	Stores V0 to VX (including VX) in memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.
         static void _cpu_FX65(void);    // FX65 	MEM 	    reg_load(Vx,&I) 	Fills V0 to VX (including VX) with values from memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified. 
-        static void parseInstruction(unsigned short instruction);
-    
+        
     public:
 
         bool drawFlag;
 
         void Init(void);
-        void loadRom(const char* file);
+        int loadRom(const char *);
         bool emulate(void);
         void checkKeys(void);
         
 };
+#endif

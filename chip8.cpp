@@ -35,23 +35,113 @@ void(*Chip8::_8XXN_Instruction[16])(void){          Chip8::_cpu_8XY0,           
                                                     Chip8::_cpu_8XYE,                    //0xEXXX
                                                     Chip8::_cpu_NOP                      //0xFXXX 
     };
-    
+
+unsigned char fontset[80] =
+{ 
+  0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+  0x20, 0x60, 0x20, 0x20, 0x70, // 1
+  0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+  0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+  0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+  0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+  0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+  0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+  0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+  0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+  0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+  0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+  0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+  0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+  0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+  0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+};
 
 
+char Chip8::_mem[0x1000];
+
+// Data registers (V0 - VF)
+// The VF register doubles as a flag for some instructions.
+// In addition operation VF is for carry flag. While in subtraction, it is the "no borrow" flag. 
+// In the draw instruction the VF is set upon pixel collision. 
+char Chip8::_V[16];
+// Address register
+// 16 bits wide and is used with several opcodes that involve memory operations
+unsigned short Chip8::_I;
+// Program counter
+unsigned short Chip8::_pc;
+// Graphic output
+unsigned char Chip8::_gfx[64*32];
+// Interrupts 
+unsigned char Chip8::_sound_timer, Chip8::_delay_timer;
+// Stack, Stackpointer
+unsigned short Chip8::_stack[16];
+unsigned short Chip8::_sp;
+// Keymap
+unsigned char Chip8::_key[16];
+// Opcode
+// Consists of 2*8 bit values from program memory
+unsigned char Chip8::_opcode;
 
 void Chip8::Init(void)
 {
+    // Initialize
+    _pc = 0x200;
+    _opcode = 0;
+    _sp = 0;
+    _I = 0;
 
+    for (int i = 0; i < 17; ++i)
+    {
+        _V[i] = 0;
+        _stack[i] = 0;
+    }
+
+    // Load fontset to memory
+
+    
 }
 
-void Chip8::loadRom(const char* file)
+int Chip8::loadRom(const char* file)
 {
+    int bufferSize = 3583;
+    char * buf;
+    FILE *romFile=fopen(file,"rb");
+    if(!romFile){
+        return 0;
+    }
 
+    fread(buf, sizeof(char), bufferSize, romFile);
+    for(int i = 0; i < bufferSize; ++i)
+    {
+        _mem[i+512] = buf[i];
+    }
+    fclose(romFile);
+    return 1;
 }
 
 bool Chip8::emulate(void)
 {
+    // Debug info
+    
+    std::cout << "\033[2J\033[1;1H";
 
+    std::cout << "OPCODE: ";
+    std::cout << std::hex << _mem[_pc] << " " << _mem[_pc+1] << std::endl;
+
+    std::cout << "SP: ";
+    std::cout << std::hex << _sp << std::endl;
+
+    for (int i = 0; i < 17; ++i)
+    {
+        std::cout << "V" << i << ": ";
+        std::cout << std::hex << _V[i] << std::endl;
+    }
+    for (int i = 0; i < 17; ++i)
+    {
+        std::cout << "STACK" << i << ": ";
+        std::cout << std::hex << _stack[i] << std::endl;
+    }
+    
 }
 
 void Chip8::parseInstruction(unsigned short instruction)
@@ -69,23 +159,28 @@ void Chip8::_interpret8XXNInstruction(void)
 
 void Chip8::_interpret00XXInstruction(void)
 {
-    if(_opcode == 0x00E0){
-         _cpu_00E0();
-    }
-    else{
-        _cpu_0NNN();
+    switch(_opcode){
+        case 0x00E0:
+            _cpu_00E0();
+            break;
+        case 0x00EE:
+            _cpu_00EE();
+            break;
+        default:
+            _cpu_0NNN();
+            break;
     }
 }
 
 void Chip8::_interpretEXXXInstruction(void)
 {
-
+    _pc += 2;
 }
 
 
 void Chip8::_interpretFXXXInstruction(void)
 {
-
+    _pc += 2;
 }
 
 
@@ -97,29 +192,35 @@ void Chip8::checkKeys(void)
  // CPU function opcodes
 // For reference see: https://en.wikipedia.org/wiki/CHIP-8#Opcode_table
 
-
 // 0x0XXX
-void Chip8::_cpu_NOP(void)    // 0NNN 	Call 		Calls RCA 1802 program at address NNN. Not necessary for most ROMs.
+void Chip8::_cpu_NOP(void)    // NOP                No Operation.
 {
-    _pc += 2;
+
 }
 void Chip8::_cpu_0NNN(void)    // 0NNN 	Call 		Calls RCA 1802 program at address NNN. Not necessary for most ROMs.
 {
-    
+    _pc = _opcode & 0x0FFF;
 }
 void Chip8::_cpu_00E0(void)    // 00E0 	Display 	disp_clear() 	Clears the screen.
 {
-    
-}    
+    _pc += 2;
+}
+void Chip8::_cpu_00EE(void)    // 00EE 	Flow        Return from a subroutine. The interpreter sets the program counter to the address at the top of the stack, then subtracts 1 from the stack pointer.
+{
+    _pc = _stack[_sp];
+    --_sp;
+}       
 // 0x1XXX
 void Chip8::_cpu_1NNN(void)     // 1NNN 	Flow 	goto NNN; 	Jumps to address NNN.
 {
-    
+    _pc = _opcode & 0x0FFF;
 }     
 // 0x2XXX
 void Chip8::_cpu_2XNN(void)     // 2NNN 	Flow 	*(0xNNN)() 	Calls subroutine at NNN. 
 {
-    
+    _stack[_sp] = _pc;
+    ++_sp;
+    _pc = _opcode & 0x0FFF;
 }    
 // 0x3XXX
 void Chip8::_cpu_3XNN(void)     // 3XNN 	Cond 	if(Vx==NN) 	Skips the next instruction if VX equals NN. (Usually the next instruction is a jump to skip a code block) 
@@ -267,42 +368,47 @@ void Chip8::_cpu_EX9E(void)     // EX9E 	KeyOp 	if(key()==Vx) 	Skips the next in
 }
 void Chip8::_cpu_EXA1(void)     // EXA1 	KeyOp 	if(key()!=Vx) 	Skips the next instruction if the key stored in VX isn't pressed. (Usually the next instruction is a jump to skip a code block)
 {
-    
+    _pc += 2;
 }
 // 0xFXXX
 void Chip8::_cpu_FX07(void)     // FX07 	Timer 	Vx = get_delay() 	Sets VX to the value of the delay timer.
 {
-    
+    _pc += 2;
 }
 void Chip8::_cpu_FX0A(void)     // FX0A 	KeyOp 	Vx = get_key() 	A key press is awaited, and then stored in VX. (Blocking Operation. All instruction halted until next key event)
 {
-    
+    _pc += 2;
 }
 void Chip8::_cpu_FX15(void)     // FX15 	Timer 	delay_timer(Vx) 	Sets the delay timer to VX.
 {
-    
+    _pc += 2;
 }
 void Chip8::_cpu_FX18(void)     // FX18 	Sound 	sound_timer(Vx) 	Sets the sound timer to VX.
 {
-    
+    _pc += 2;
 }
 void Chip8::_cpu_FX1E(void)     // FX1E 	MEM 	I +=Vx 	Adds VX to I.[4]
 {
-    
+    _I += _opcode & 0x0F00;
+    _pc += 2;
 }
 void Chip8::_cpu_FX29(void)     // FX29 	MEM 	I=sprite_addr[Vx] 	Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
 {
-    
+    _pc += 2;
 }
 void Chip8::_cpu_FX33(void)     // FX33 	BCD 	set_BCD(Vx);
 {
-    
+    _pc += 2;
 }
 void Chip8::_cpu_FX55(void)     // FX55 	MEM 	reg_dump(Vx,&I) 	Stores V0 to VX (including VX) in memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.
 {
-    
+    //I???
+    _V[_opcode & 0x0F00] = _V[0];
+    _pc += 2;
 }
 void Chip8::_cpu_FX65(void)     // FX65 	MEM 	reg_load(Vx,&I) 	Fills V0 to VX (including VX) with values from memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.
 {
-    
+    //I???
+    _V[0] = _V[_opcode & 0x0F00];
+    _pc += 2;
 } 
