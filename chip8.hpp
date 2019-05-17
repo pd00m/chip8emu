@@ -10,13 +10,13 @@ class Chip8{
         // 0x050 - 0x0A0 - Font data (builtin)
         // 0x200 - 0xFFF - Program ROM and work RAM
         // Program Memory begins at 0x0200
-        static char _mem[0x1000];
+        static unsigned char _mem[0x1000];
 
         // Data registers (V0 - VF)
         // The VF register doubles as a flag for some instructions.
         // In addition operation VF is for carry flag. While in subtraction, it is the "no borrow" flag. 
         // In the draw instruction the VF is set upon pixel collision. 
-        static char _V[16];
+        static unsigned char _V[16];
 
         // Address register
         // 16 bits wide and is used with several opcodes that involve memory operations
@@ -40,7 +40,7 @@ class Chip8{
 
         // Opcode
         // Consists of 2*8 bit values from program memory
-        static unsigned char _opcode;
+        static unsigned short _opcode;
 
         // Fontset
         unsigned char fontset[80];
@@ -49,7 +49,7 @@ class Chip8{
         static void(*_basicInstruction[16])(void);      
         static void(*_8XXN_Instruction[16])(void);
 
-        static void parseInstruction(unsigned short instruction);
+        static void parseInstruction(void);
    
        // CPU function opcodes
        // For reference see: https://en.wikipedia.org/wiki/CHIP-8#Opcode_table

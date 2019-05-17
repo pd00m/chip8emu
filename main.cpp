@@ -4,11 +4,12 @@
 int main(void){
     Chip8 emu;
     emu.Init();
-    emu.loadRom("roms/life.ch8");
+    emu.loadRom("rng.ch8");
 
     while(1){
         emu.emulate();
-        usleep(500000);
+        usleep(250000);
+        //getchar();
     }
 
     return 0;
